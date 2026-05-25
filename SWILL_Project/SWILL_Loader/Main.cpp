@@ -50,6 +50,7 @@ int main() {
     if (g_payload_len < 64 || g_payload[0] != 'M' || g_payload[1] != 'Z') {
         SwillLogger::Error("No valid PE DLL embedded in executable!");
         std::cout << "[!] CRITICAL: No DLL resource found. Please rebuild with payload." << std::endl;
+        std::cout << "[i] Build SWILL_Payload first, then copy it to bin/swill_payload.bin" << std::endl;
         system("pause");
         return 1;
     }

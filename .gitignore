@@ -1,62 +1,43 @@
 ```
-# Build artifacts and binaries
+# Build artifacts
+*.obj
 *.exe
 *.dll
 *.lib
-*.obj
 *.pdb
-*.ilk
 *.exp
-*.iobj
-*.ipdb
-*.tlog
-*.log
-*.tmp
-
-# Visual Studio files
-*.vcxproj
-*.vcxproj.filters
-*.vcxproj.user
-*.sln
-Debug/
-Release/
-x64/
-Win32/
-ipch/
-*.aps
-*.ncb
-*.opt
-*.plg
-*.psess
-*.sdf
-*.suo
-*.vspscc
-*.vssscc
-*.userossc
-*.vc.db
-*.VC.VC.opendb
-*.VC.opendb
+*.ilk
+*.rc
+*.res
 
 # Dependencies
-3rdparty/
-SWILL_Project/3rdparty/
+node_modules/
+.venv/
+venv/
+__pycache__/
+*.egg-info/
 
-# Temporary files
+# Logs and temp files
+*.log
 *.tmp
 *.temp
 *.bak
-*.cache
 
-# Environment files
+# Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# System files
+.DS_Store
+Thumbs.db
 .env
 .env.local
 *.env.*
 
-# Logs
-*.log
-
-# Editor backups
-*.swp
-*.swo
-*~
+# Build directories
+build/
+dist/
+target/
 ```
