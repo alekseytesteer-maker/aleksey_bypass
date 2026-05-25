@@ -1,56 +1,43 @@
 ```
-# Build artifacts
+# Compiled and build artifacts
+*.o
 *.obj
 *.exe
 *.dll
-*.lib
-*.pdb
-*.ilk
-*.exp
-*.iobj
-*.ipdb
-*.tlog
-*.lastbuildstate
-
-# Visual Studio files
-*.suo
-*.user
-*.userosscache
-*.sln.docstates
-*.vcxproj.filters
-[ipP]ublish.xml
-*.VC.db
-*.VC.VC.opendb
-
-# Visual Studio Code files
-.vscode/
-
-# Temporary files
-*.tmp
-*.temp
-*.bak
-*.cache
-
-# Logs
-*.log
-
-# Environment files
-.env
-.env.local
-*.env.*
+*.so
+*.a
+*.out
 
 # Dependencies
 node_modules/
 venv/
 .venv/
 __pycache__/
-*.egg-info/
-.Python
+.mypy_cache/
+.pytest_cache/
+target/
+.gradle/
 
-# OS specific
+# Logs and temp files
+*.log
+*.tmp
+*.swp
+
+# Editors
+.vscode/
+.idea/
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Coverage
+coverage/
+htmlcov/
+.coverage
+
+# System
 .DS_Store
 Thumbs.db
-ehthumbs.db
-Icon?
-.deps/
 ```

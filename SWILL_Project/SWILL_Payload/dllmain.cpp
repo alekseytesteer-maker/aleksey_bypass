@@ -1,39 +1,27 @@
+// SWILL Payload - DLL Entry Point
 #include <windows.h>
+#include <iostream>
 
-// Объявление функции ядра
-extern DWORD WINAPI SwillCoreThread(LPVOID lpParam);
+// Forward declaration of core thread
+DWORD WINAPI SwillCoreThread(LPVOID lpParam);
 
-// Точка входа DLL
 BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserved) {
     switch (ul_reason_for_call) {
         case DLL_PROCESS_ATTACH: {
-            // Отключаем уведомления о потоках для производительности
             DisableThreadLibraryCalls(hModule);
             
-            // Создаем поток ядра
+            // Create core thread for payload execution
             HANDLE hThread = CreateThread(nullptr, 0, SwillCoreThread, hModule, 0, nullptr);
-            
-            if (!hThread) {
-                MessageBoxA(NULL, "Не удалось создать поток SWILL Core!", "SWILL Error", MB_ICONERROR);
+            if (hThread) {
+                CloseHandle(hThread);
+            } else {
                 return FALSE;
             }
-            
-            // Закрываем handle потока (поток продолжит работать)
-            CloseHandle(hThread);
-            
             break;
         }
-        
-        case DLL_PROCESS_DETACH: {
-            // Очистка при выгрузке DLL
-            // Здесь можно добавить дополнительную логику очистки
-            break;
-        }
-        
-        case DLL_THREAD_ATTACH:
-        case DLL_THREAD_DETACH:
+        case DLL_PROCESS_DETACH:
+            // Cleanup handled by core thread shutdown
             break;
     }
-    
     return TRUE;
 }

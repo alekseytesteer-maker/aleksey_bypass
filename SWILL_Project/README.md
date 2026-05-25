@@ -1,180 +1,92 @@
-# SWILL Project - Устойчивый Инжектор и Сигнатурное Ядро
+# SWILL Project - Advanced MTA Injection Framework
 
-## Описание проекта
+## Overview
+SWILL (Stealth Weapon for Injecting Libraries and Loading) is a comprehensive injection framework designed for Multi Theft Auto. It features advanced memory manipulation, signature scanning, and MinHook-based function interception to bypass anti-cheat protections.
 
-SWILL (Stealthy Windows Injection & Low-level Loader) — это профессиональный инструмент для внедрения и анализа процессов, использующий сигнатурный поиск и перехват функций через MinHook.
+## Components
 
-### Компоненты:
+### 1. SWILL_Loader (Injector)
+- **SeDebugPrivilege** elevation for system-wide access
+- **DACL manipulation** to grant PROCESS_ALL_ACCESS
+- **Syscall stubbing** for stealthy memory operations
+- **Multiple injection methods**:
+  - LoadLibraryW via remote thread
+  - Reflective DLL injection (manual mapping)
+  - Cave hunting for safe memory allocation
+- **Process monitoring** with crash detection
 
-1. **SWILL_Loader** — устойчивый инжектор DLL с:
-   - Получением привилегий SeDebugPrivilege
-   - Валидацией дескрипторов процессов
-   - Минимально необходимыми правами доступа
-   - Защитой от обнаружения
+### 2. SWILL_Payload (DLL)
+- **MinHook integration** for function interception
+- **AOB Pattern Scanner** for dynamic address resolution
+- **CIdArray::PopUniqueId hook** to prevent ID allocation crashes
+- **Crash trap neutralization** (NOP'd dangerous instructions)
+- **NetBitStream handler detection** for future packet interception
 
-2. **SWILL_Payload** — сигнатурное ядро с:
-   - AOB-сканером для динамического поиска адресов
-   - MinHook для безопасного перехвата функций
-   - Системой логирования событий
-   - Обходом античита CIdArray
-   - Защитой от крашей
-
-## Предварительные требования
-
-1. **Visual Studio 2019 или 2022** с поддержкой C++
-2. **Windows SDK 10.0+**
-3. **Архитектура x86** (целевая платформа — 32-битная)
-
-## Быстрый старт
-
-### Вариант 1: Автоматическая настройка (рекомендуется)
-
-```batch
-cd SWILL_Project
-setup.bat
-```
-
-Скрипт автоматически загрузит MinHook и настроит проект.
-
-### Вариант 2: Ручная настройка MinHook
-
-1. Скачайте MinHook с https://github.com/TsudaKageyu/minhook/releases
-2. Распакуйте архив
-3. Скопируйте файлы:
-   - `minhook/include/MinHook.h` → `SWILL_Payload/MinHook/MinHook.h`
-   - `minhook/bin/MinHook.x86.lib` → `SWILL_Payload/MinHook/lib.x86/MinHook.lib`
-
-## Сборка проекта
-
-### В Visual Studio:
-
-1. Откройте `SWILL_Project.sln`
-2. Убедитесь, что выбрана конфигурация **Release | Win32**
-3. Соберите решение: **Build → Build Solution** (Ctrl+Shift+B)
-4. Готовые файлы появятся в папке `bin/`:
-   - `SWILL_Loader.exe`
-   - `SwillPayload.dll`
-
-### Из командной строки (MSBuild):
-
-```batch
-msbuild SWILL_Project.sln /p:Configuration=Release /p:Platform=Win32
-```
-
-## Использование
-
-### Шаг 1: Подготовка
-
-1. Запустите GTA San Andreas с MTA
-2. Дождитесь полной загрузки игры
-3. Убедитесь, что процесс `gta_sa.exe` запущен
-
-### Шаг 2: Инъекция
-
-1. Поместите `SWILL_Loader.exe` и `SwillPayload.dll` в одну папку
-2. Запустите `SWILL_Loader.exe` **от имени администратора**
-3. Инжектор автоматически:
-   - Получит права отладки
-   - Найдёт процесс `gta_sa.exe`
-   - Внедрит DLL в процесс
-
-### Шаг 3: Проверка работы
-
-После успешной инъекции:
-- Откроется консоль отладки SWILL Core
-- В файле `swill_payload.log` появятся записи о работе
-- В консоли будут отображаться найденные адреса и установленные хуки
-
-## Структура проекта
+## Architecture
 
 ```
 SWILL_Project/
-├── bin/                          # Скомпилированные файлы
-│   ├── SWILL_Loader.exe
-│   └── SwillPayload.dll
-├── obj/                          # Промежуточные файлы сборки
 ├── SWILL_Loader/
-│   ├── Injector.hpp              # Класс инъекции DLL
-│   └── Main.cpp                  # Точка входа инжектора
+│   ├── Injector.hpp      # Core injection logic
+│   └── Main.cpp          # Entry point
 ├── SWILL_Payload/
-│   ├── MinHook/
-│   │   ├── MinHook.h             # Заголовочный файл MinHook
-│   │   ├── MinHook.cpp           # Реализация MinHook
-│   │   └── lib.x86/              # Библиотеки для x86
-│   ├── Memory.hpp                # AOB-сканер и патчер памяти
-│   ├── Hooks.hpp                 # Менеджер хуков
-│   ├── Logger.hpp                # Система логирования
-│   ├── Core.cpp                  # Ядро с реализацией хуков
-│   └── dllmain.cpp               # Точка входа DLL
-├── SWILL_Project.sln             # Решение Visual Studio
-├── SWILL_Loader.vcxproj          # Проект инжектора
-├── SWILL_Payload.vcxproj         # Проект DLL
-├── setup.bat                     # Скрипт настройки
-├── README.md                     # Этот файл
-├── BUILD_INSTRUCTIONS.md         # Подробная инструкция по сборке
-└── DOCUMENTATION.md              # Техническая документация
+│   ├── Memory.hpp        # AOB scanner & patch engine
+│   ├── Hooks.hpp         # MinHook wrapper
+│   ├── Core.cpp          # CIdArray hook implementation
+│   ├── dllmain.cpp       # DLL entry point
+│   └── MinHook/          # MinHook library files
+├── bin/                  # Compiled binaries
+└── docs/                 # Documentation
 ```
 
-## Технические детали
+## Key Features
 
-### Архитектура CIdArray
+### CIdArray Protection
+Based on decompiled analysis of `FUN_10241990`:
+- Monitors `DAT_105c8b5c` (IsInitialized flag)
+- Checks `DAT_105c8b7c` (ID stack count)
+- Generates virtual IDs when stack is empty
+- Prevents crash from `mov [0], 0` trap
 
-Проект работает с внутренней структурой MTA `CIdArray`, которая управляет выделением уникальных идентификаторов объектов:
+### Signature Database
+All patterns from technical analysis:
+- `55 8B EC 83 EC ?? 53 56 57 A1...` - PopUniqueId
+- `55 8B EC 81 EC 0C 04 00 00 A1...` - NetBitStream handler
+- `C7 05 00 00 00 00 00 00 00 00` - Crash trap
 
-| Смещение | Поле | Тип | Описание |
-|----------|------|-----|----------|
-| 0x00 | m_uiCapacity | uint32 | Максимальная ёмкость массива |
-| 0x04 | IsInitialized | uint8 | Флаг инициализации |
-| 0x08 | m_uiPopIdCounter | uint32 | Счётчик операций извлечения |
-| 0x0C | m_uiTimeoutLimit | uint32 | Лимит времени (3600000 мс) |
-| 0x10 | m_IDStackCapacity | uint32 | Ёмкость стека свободных ID |
-| 0x24 | m_IDStackCount | uint32 | Текущее количество свободных ID |
-| 0x28 | m_ArrayData | uint32* | Указатель на данные массива |
+## Build Instructions
 
-### Перехваченные функции
+1. **Download MinHook**: Place in `SWILL_Payload/MinHook/`
+2. **Open Solution**: `SWILL_Project.sln` in Visual Studio
+3. **Configure**: Release | Win32 platform
+4. **Build**: Build Solution (Ctrl+Shift+B)
+5. **Run**: Execute `SWILL_Loader.exe` as Administrator
 
-1. **CIdArray::PopUniqueId (FUN_10241990)**
-   - Сигнатура: `55 8B EC 83 EC ?? 53 56 57 A1 ?? ?? ?? ?? 33 C5 89 45 F4 8B 1D`
-   - Назначение: Выделение нового уникального ID для объекта
-   - Защита: Предотвращение краша при пустом стеке свободных ID
+## Usage
 
-2. **Ловушка краша**
-   - Сигнатура: `C7 05 00 00 00 00 00 00 00 00`
-   - Обезвреживание: Замена на NOP-инструкции
+1. Start MTA San Andreas manually
+2. Run `SWILL_Loader.exe` as Administrator
+3. Wait for automatic injection (up to 60 seconds)
+4. Check `swill_injector.log` on Desktop for status
 
-### Сигнатуры для поиска
+## Technical Details
 
-Полный список сигнатур доступен в `DOCUMENTATION.md`.
+### Memory Map (CIdArray)
+- `0x105c8b58` - m_uiCapacity
+- `0x105c8b5c` - IsInitialized
+- `0x105c8b60` - m_uiPopIdCounter
+- `0x105c8b64` - m_uiTimeoutLimit (3600000ms)
+- `0x105c8b7c` - ID stack count
+- `0x105c8b80` - Array start pointer
+- `0x105c8b84` - Array end pointer
 
-## Устранение проблем
+### Hook Flow
+1. Wait for netc.dll module load
+2. Scan for PopUniqueId signature
+3. Extract CIdArray base from function prologue
+4. Install detour hook via MinHook
+5. Monitor stack count, generate virtual IDs if needed
+6. Neutralize crash traps with NOP patches
 
-### Инжектор не находит процесс
-
-- Убедитесь, что `gta_sa.exe` запущен
-- Запустите инжектор от имени администратора
-- Проверьте, что имя процесса точно `gta_sa.exe`
-
-### Ошибка при инъекции
-
-- Отключите антивирус на время тестирования
-- Убедитесь, что DLL находится в той же папке, что и инжектор
-- Проверьте соответствие архитектуры (x86)
-
-### Хуки не устанавливаются
-
-- Проверьте логи в `swill_payload.log`
-- Убедитесь, что сигнатуры соответствуют версии netc.dll
-- Версия MTA должна быть совместима с сигнатурами
-
-## Безопасность
-
-⚠️ **Важное предупреждение:** Данный проект предназначен только для образовательных целей и тестирования на собственных серверах. Использование в онлайн-играх может нарушать условия использования и привести к блокировке.
-
-## Лицензия
-
-- MinHook: BSD 2-Clause License (Copyright © 2009-2019 Tsuda Kageyu)
-- SWILL Project: Образовательный проект
-
-## Контакты и поддержка
-
-Для вопросов и предложений обращайтесь в соответствующий репозиторий.
+## Disclaimer
+This project is for educational purposes only. Use responsibly and only on servers where you have permission.
