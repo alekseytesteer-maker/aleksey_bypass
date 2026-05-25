@@ -1,130 +1,118 @@
-// SWILL Payload - Core Logic with CIdArray Hook
 #include "Memory.hpp"
 #include "Hooks.hpp"
 #include <windows.h>
-#include <iostream>
+#include <psapi.h>
+#include <atomic>
+#include <cstdio>
 
 #pragma comment(lib, "psapi.lib")
 
-// Global variables
+// Глобальные атомарные переменные для потокобезопасности
+std::atomic<uintptr_t> g_CIdArray_Base(0);
+std::atomic<uintptr_t> g_CIdArray_IsInitialized(0);
+std::atomic<uintptr_t> g_CIdArray_IDStackCount(0);
+std::atomic<bool> g_IsCoreReady(false);
+
+// Тип оригинальной функции PopUniqueId (__fastcall для эмуляции __thiscall)
+typedef unsigned int (__fastcall *TPopUniqueId)(void* pThis, void* edx, void* param_1);
 TPopUniqueId g_OriginalPopUniqueId = nullptr;
-uintptr_t g_CIdArray_Base = 0;
-uintptr_t g_CIdArray_IsInitialized = 0;
-uintptr_t g_CIdArray_IDStackCount = 0;
 
-// Hooked function for CIdArray::PopUniqueId (FUN_10241990)
-unsigned int __stdcall Hooked_PopUniqueId(void* param_1, void* param_2) {
-    // Check if initialized
-    char isInit = *(char*)(g_CIdArray_IsInitialized);
-    if (!isInit) {
-        return g_OriginalPopUniqueId(param_1, param_2);
+// Детур-функция для CIdArray::PopUniqueId (FUN_10241990)
+// Используем __fastcall для корректного перехвата __thiscall в x86
+unsigned int __fastcall Hooked_PopUniqueId(void* pThis, void* edx, void* param_1) {
+    // Проверка на валидность оригинального указателя
+    if (!g_OriginalPopUniqueId) {
+        return 0; // Безопасный возврат при отсутствии оригинала
     }
-
-    // Check stack count
-    int stackCount = *(int*)(g_CIdArray_IDStackCount);
     
-    if (stackCount <= 0) {
-        std::cout << "[HOOK] Prevented crash! Empty ID stack. Generating virtual ID..." << std::endl;
+    uintptr_t isInitAddr = g_CIdArray_IsInitialized.load();
+    uintptr_t stackCountAddr = g_CIdArray_IDStackCount.load();
+    
+    __try {
+        // Проверяем инициализацию через безопасное чтение
+        char isInit = 0;
+        if (!SwillMemory::ReadMemorySafe(isInitAddr, isInit)) {
+            // Не можем прочитать - передаем управление оригиналу
+            return g_OriginalPopUniqueId(pThis, edx, param_1);
+        }
         
-        // Generate safe virtual ID
-        unsigned int capacity = *(unsigned int*)(g_CIdArray_Base + 0x04);
-        unsigned int fakeIndex = capacity + 1000;
+        if (!isInit) {
+            return g_OriginalPopUniqueId(pThis, edx, param_1);
+        }
         
-        return fakeIndex + 0x2000000;
+        // Читаем счетчик стека свободных ID
+        int stackCount = 0;
+        if (!SwillMemory::ReadMemorySafe(stackCountAddr, stackCount)) {
+            return g_OriginalPopUniqueId(pThis, edx, param_1);
+        }
+        
+        // Защита от краша при пустом стеке
+        if (stackCount <= 0) {
+            // Генерируем виртуальный ID вместо краша
+            unsigned int capacity = 0;
+            uintptr_t baseAddr = g_CIdArray_Base.load();
+            if (baseAddr && SwillMemory::ReadMemorySafe(baseAddr, capacity)) {
+                unsigned int fakeIndex = capacity + 1000;
+                return fakeIndex + 0x2000000;
+            }
+            // Fallback: просто возвращаем безопасное значение
+            return 0x20000001;
+        }
+        
+        // Все проверки пройдены - вызываем оригинал
+        return g_OriginalPopUniqueId(pThis, edx, param_1);
     }
-
-    // Call original function
-    return g_OriginalPopUniqueId(param_1, param_2);
+    __except(EXCEPTION_EXECUTE_HANDLER) {
+        // При любом исключении возвращаем безопасное значение
+        return 0x20000001;
+    }
 }
 
 DWORD WINAPI SwillCoreThread(LPVOID lpParam) {
-    AllocConsole();
-    FILE* f;
-    freopen_s(&f, "CONOUT$", "w", stdout);
-
-    std::cout << "==================================================" << std::endl;
-    std::cout << "       SWILL CORE v1.0 | MINHOOK INTEGRATION      " << std::endl;
-    std::cout << "==================================================" << std::endl;
-
-    // Initialize MinHook
-    if (!SwillHooks::Initialize()) {
-        fclose(stdout);
-        FreeConsole();
-        return 1;
-    }
-
-    // Wait for netc.dll
     HMODULE hNetc = nullptr;
-    std::cout << "[*] Waiting for netc.dll..." << std::endl;
+    
+    // Ждем загрузки netc.dll
     while ((hNetc = GetModuleHandleW(L"netc.dll")) == nullptr) {
         Sleep(200);
     }
-    std::cout << "[+] netc.dll loaded at: 0x" << std::hex << (uintptr_t)hNetc << std::dec << std::endl;
-
-    // Find CIdArray::PopUniqueId function
-    std::cout << "[*] Scanning for PopUniqueId signature..." << std::endl;
-    uintptr_t funcAddr = SwillMemory::FindPattern(hNetc, 
-        "55 8B EC 83 EC ?? 53 56 57 A1 ?? ?? ?? ?? 33 C5 89 45 F4 8B 1D");
     
-    if (!funcAddr) {
-        std::cout << "[!] CRITICAL: PopUniqueId function not found!" << std::endl;
-        fclose(stdout);
-        FreeConsole();
+    // Инициализируем MinHook
+    if (!SwillHooks::Initialize()) {
         return 1;
     }
-
-    std::cout << "[+] Found PopUniqueId at: 0x" << std::hex << funcAddr << std::dec << std::endl;
-
-    // Extract CIdArray base address from function
+    
+    // Находим функцию PopUniqueId по сигнатуре
+    uintptr_t funcAddr = SwillMemory::FindPattern(hNetc, SwillShared::Signatures::POP_UNIQUE_ID);
+    
+    if (!funcAddr) {
+        // Функция не найдена - выходим без ошибки
+        return 0;
+    }
+    
+    // Вычисляем базовый адрес структуры CIdArray из инструкции A1 ?? ?? ?? ??
+    // Смещение 11 байт от начала функции (после prologue)
     uintptr_t globalPtrAddr = *(uintptr_t*)(funcAddr + 11);
-    g_CIdArray_Base = globalPtrAddr;
+    g_CIdArray_Base.store(globalPtrAddr);
     
-    // Calculate field offsets based on decompiled code analysis
-    g_CIdArray_IsInitialized = g_CIdArray_Base + 0x04;  // DAT_105c8b5c
-    g_CIdArray_IDStackCount  = g_CIdArray_Base + 0x24;  // DAT_105c8b7c
-
-    std::cout << "[->] CIdArray Base: 0x" << std::hex << g_CIdArray_Base << std::dec << std::endl;
-    std::cout << "[->] IsInitialized: 0x" << std::hex << g_CIdArray_IsInitialized << std::dec << std::endl;
-    std::cout << "[->] IDStackCount: 0x" << std::hex << g_CIdArray_IDStackCount << std::dec << std::endl;
-
-    // Install hook
-    std::cout << "[*] Installing CIdArray::PopUniqueId hook..." << std::endl;
+    // Вычисляем адреса полей структуры
+    g_CIdArray_IsInitialized.store(globalPtrAddr + SwillShared::CIdArrayOffsets::IS_INITIALIZED);
+    g_CIdArray_IDStackCount.store(globalPtrAddr + SwillShared::CIdArrayOffsets::ID_STACK_COUNT);
     
-    if (SwillHooks::CreateHook((void*)funcAddr, (void*)Hooked_PopUniqueId, 
-                               (void**)&g_OriginalPopUniqueId, "CIdArray::PopUniqueId")) {
-        std::cout << "[+++++] Hook installed successfully! Crash protection active." << std::endl;
-    } else {
-        std::cout << "[!] Failed to install hook" << std::endl;
+    // Создаем хук на PopUniqueId
+    if (SwillHooks::CreateHook(reinterpret_cast<void*>(funcAddr), 
+                               reinterpret_cast<void*>(Hooked_PopUniqueId),
+                               reinterpret_cast<void**>(&g_OriginalPopUniqueId))) {
+        // Включаем хук
+        SwillHooks::EnableHook(reinterpret_cast<void*>(funcAddr));
     }
-
-    // Find NetBitStream packet handler
-    std::cout << "[*] Scanning for NetBitStream handler..." << std::endl;
-    uintptr_t netPacketHandler = SwillMemory::FindPattern(hNetc, 
-        "55 8B EC 81 EC 0C 04 00 00 A1 ?? ?? ?? ?? 33 C5 89 45 FC 53 56 57 8B F1");
     
-    if (netPacketHandler) {
-        std::cout << "[+] Found NetBitStream handler at: 0x" << std::hex << netPacketHandler << std::dec << std::endl;
-        std::cout << "[*] Ready for packet interception hook (next phase)" << std::endl;
-    } else {
-        std::cout << "[!] NetBitStream handler not found" << std::endl;
-    }
-
-    // Neutralize crash trap (mov [0], 0)
-    std::cout << "[*] Scanning for crash trap..." << std::endl;
-    uintptr_t crashTrap = SwillMemory::FindPattern(hNetc, "C7 05 00 00 00 00 00 00 00 00");
-    if (crashTrap) {
-        std::cout << "[+] Found crash trap at: 0x" << std::hex << crashTrap << std::dec << std::endl;
-        if (SwillMemory::Nop((void*)crashTrap, 10)) {
-            std::cout << "[->] Crash trap neutralized (NOP'd)" << std::endl;
-        }
-    }
-
-    std::cout << "==================================================" << std::endl;
-    std::cout << "[*] SWILL Core deployment complete. System stable." << std::endl;
-    std::cout << "==================================================" << std::endl;
-
-    // Keep thread alive
+    // Помечаем ядро как готовое
+    g_IsCoreReady.store(true);
+    
+    // Основной цикл ядра (может быть расширен для других задач)
     while (true) {
         Sleep(1000);
+        
+        // Проверка на команду экстренной выгрузки через IPC могла бы быть здесь
     }
 }

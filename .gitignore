@@ -1,43 +1,62 @@
 ```
-# Compiled and build artifacts
-*.o
-*.obj
+# Build artifacts and binaries
 *.exe
 *.dll
-*.so
-*.a
-*.out
-
-# Dependencies
-node_modules/
-venv/
-.venv/
-__pycache__/
-.mypy_cache/
-.pytest_cache/
-target/
-.gradle/
-
-# Logs and temp files
+*.lib
+*.obj
+*.pdb
+*.ilk
+*.exp
+*.iobj
+*.ipdb
+*.tlog
 *.log
 *.tmp
-*.swp
 
-# Editors
-.vscode/
-.idea/
+# Visual Studio files
+*.vcxproj
+*.vcxproj.filters
+*.vcxproj.user
+*.sln
+Debug/
+Release/
+x64/
+Win32/
+ipch/
+*.aps
+*.ncb
+*.opt
+*.plg
+*.psess
+*.sdf
+*.suo
+*.vspscc
+*.vssscc
+*.userossc
+*.vc.db
+*.VC.VC.opendb
+*.VC.opendb
 
-# Environment
+# Dependencies
+3rdparty/
+SWILL_Project/3rdparty/
+
+# Temporary files
+*.tmp
+*.temp
+*.bak
+*.cache
+
+# Environment files
 .env
 .env.local
 *.env.*
 
-# Coverage
-coverage/
-htmlcov/
-.coverage
+# Logs
+*.log
 
-# System
-.DS_Store
-Thumbs.db
+# Editor backups
+*.swp
+*.swo
+*~
 ```

@@ -1,108 +1,114 @@
-# Инструкция по быстрой сборке SWILL Project
+# Инструкция по сборке SWILL Project
 
-## Вариант 1: Использование Visual Studio (Рекомендуется)
+## Предварительные требования
 
-### Шаг 1: Подготовка MinHook
-1. Скачайте оригинальную библиотеку MinHook: https://github.com/TsudaKageyu/minhook/releases
-2. Распакуйте архив
-3. Скопируйте `MinHook.h` из `minhook-devel/include/` в `SWILL_Payload/MinHook/`
-4. Скопируйте `MinHook.lib` из `minhook-devel/lib/MinHook.x86.lib` в `SWILL_Payload/MinHook/lib.x86/MinHook.lib`
+1. **Visual Studio 2019 или новее**
+   - Установите компонент "Desktop development with C++"
+   - Platform Toolset: v142 или новее
 
-### Шаг 2: Открытие проекта
-1. Откройте `SWILL_Project.sln` в Visual Studio 2019 или 2022
-2. Убедитесь что выбрана конфигурация **Release** и платформа **x86**
+2. **Windows SDK 10.0+**
 
-### Шаг 3: Сборка
-1. Нажмите `Ctrl+Shift+B` или выберите `Build -> Build Solution`
-2. Дождитесь успешной сборки обоих проектов
+3. **Библиотека MinHook**
+   - Скачайте с https://github.com/TsudaKageyu/minhook/releases
+   - Распакуйте в папку `3rdparty/MinHook/`
 
-### Шаг 4: Запуск
-1. В папке `bin/` появятся два файла:
-   - `SWILL_Loader.exe` - инжектор
-   - `SwillPayload.dll` - DLL ядро
-2. **ВАЖНО**: Скопируйте `SwillPayload.dll` в ту же папку, где находится `SWILL_Loader.exe`
-3. Запустите GTA SA с MTA
-4. Запустите `SWILL_Loader.exe` от имени администратора
-5. Инжектор автоматически найдет процесс и внедрит DLL
+## Настройка MinHook
 
----
+### Вариант A: Использование готовых библиотек
+1. Скачайте релиз MinHook
+2. Скопируйте файлы:
+   - `include/MinHook.h` → `3rdparty/MinHook/include/`
+   - `lib/libMinHook.x86.lib` → `3rdparty/MinHook/lib.x86/`
 
-## Вариант 2: Сборка через командную строку (MSBuild)
-
-```batch
-# Откройте Developer Command Prompt for VS
-cd SWILL_Project
-
-# Сборка решения
-msbuild SWILL_Project.sln /p:Configuration=Release /p:Platform=Win32
+### Вариант B: Компиляция из исходников
+```bash
+cd 3rdparty/minhook
+cmake -B build -A Win32
+cmake --build build --config Release
+copy build\Release\libMinHook.lib ../lib.x86/
 ```
 
----
+## Сборка проекта в Visual Studio
 
-## Проверка работы
+1. Откройте `SWILL_Project.sln`
 
-После запуска вы должны увидеть:
-1. Консоль инжектора с сообщением об успехе
-2. В игре появится новая консоль "SWILL Core v1.0 - Debug Console"
-3. В папке с игрой создастся файл `swill_payload.log`
+2. Проверьте пути включения:
+   - Правый клик на решении → Properties
+   - Configuration Properties → C/C++ → General
+   - Additional Include Directories: `$(ProjectDir)..\3rdparty\MinHook\include`
 
----
+3. Проверьте пути библиотек:
+   - Configuration Properties → Linker → General
+   - Additional Library Directories: `$(ProjectDir)..\3rdparty\MinHook\lib.x86`
 
-## Возможные проблемы и решения
+4. Выберите конфигурацию:
+   - Solution Platforms: **Win32** (не x64!)
+   - Configuration: **Release**
 
-### Проблема: Ошибка компиляции MinHook
-**Решение**: Убедитесь что скачали оригинальную библиотеку MinHook и правильно разместили файлы
+5. Соберите решение:
+   - Build → Build Solution (Ctrl+Shift+B)
 
-### Проблема: DLL не загружается
-**Решение**: 
-- Проверьте что DLL и EXE в одной папке
-- Запустите инжектор от имени администратора
-- Отключите антивирус на время тестирования
+6. Результаты появятся в папке `bin/`:
+   - `SWILL_Loader.exe` — инжектор
+   - `SwillPayload.dll` — DLL с хуками
 
-### Проблема: netc.dll не найден
-**Решение**: Убедитесь что запустили GTA SA с MTA до запуска инжектора
+## Пост-сборка
 
-### Проблема: Вылет игры с кодом 0xC0000409
-**Решение**: 
-- Проверьте что используете x86 версию DLL (не x64)
-- Убедитесь что сигнатуры актуальны для вашей версии игры
+### Внедрение DLL в EXE (опционально)
 
----
+Для автоматического внедрения DLL в тело EXE:
 
-## Структура файлов после сборки
-
+1. Добавьте файл ресурсов `Resource.rc` в проект Loader:
 ```
-SWILL_Project/
-├── bin/
-│   ├── SWILL_Loader.exe      # Инжектор
-│   └── SwillPayload.dll      # DLL ядро (скопировать рядом с Loader)
-├── obj/                       # Промежуточные файлы сборки
-├── SWILL_Loader/
-│   ├── Injector.hpp
-│   └── Main.cpp
-├── SWILL_Payload/
-│   ├── MinHook/
-│   │   ├── MinHook.h
-│   │   ├── MinHook.cpp
-│   │   └── lib.x86/
-│   │       └── MinHook.lib
-│   ├── Memory.hpp
-│   ├── Hooks.hpp
-│   ├── Logger.hpp
-│   ├── Core.cpp
-│   └── dllmain.cpp
-├── SWILL_Project.sln
-├── SWILL_Loader.vcxproj
-├── SWILL_Payload.vcxproj
-└── README.md
+SWILL_PAYLOAD RCDATA "SwillPayload.dll"
 ```
 
----
+2. В Main.cpp добавьте:
+```cpp
+// Извлечение ресурса
+HRSRC hRes = FindResource(NULL, MAKEINTRESOURCE(SWILL_PAYLOAD), RT_RCDATA);
+HGLOBAL hData = LoadResource(NULL, hRes);
+LPVOID pData = LockResource(hData);
+DWORD size = SizeofResource(NULL, hRes);
+```
 
-## Технические характеристики
+## Отладка
 
-- **Архитектура**: x86 (32-bit)
-- **Стандарт C++**: C++17
-- **Инструменты**: Visual Studio 2019/2022 (v142 toolset)
-- **Библиотеки**: MinHook, Psapi
-- **Совместимость**: Windows 7/8/10/11
+### Логи
+- `swill_injector.log` — лог инжектора (рабочая директория)
+- `swill_payload.log` — лог DLL (директория игры)
+
+### Отладочная сборка
+1. Выберите конфигурацию **Debug**
+2. Включите генерацию отладочной информации
+3. Используйте Output Debug String для вывода в DbgView
+
+## Решение проблем
+
+### Ошибка линковки LNK1104: cannot open file 'MinHook.lib'
+- Проверьте путь к библиотеке в настройках проекта
+- Убедитесь что файл существует в `3rdparty/MinHook/lib.x86/`
+
+### Ошибка компиляции: 'MH_Initialize' undefined
+- Убедитесь что `MinHook.h` находится в правильном месте
+- Проверьте Additional Include Directories
+
+### DLL не загружается в процесс
+- Запустите игру и инжектор от имени администратора
+- Проверьте антивирус (может блокировать инъекцию)
+- Используйте DbgView для просмотра ошибок
+
+### Краш при выгрузке DLL
+- Убедитесь что вызывается `SwillHooks::Shutdown()`
+- Проверьте что все хуки сняты перед выходом
+
+## Архитектурные заметки
+
+### Почему Win32?
+GTA San Andreas — 32-битное приложение. Инъекция 64-битной DLL невозможна.
+
+### Почему __fastcall?
+MSVC не поддерживает прямое объявление `__thiscall` функций. Используем `__fastcall` для эмуляции передачи this через ECX.
+
+### Почему RAII?
+Автоматическое управление ресурсами предотвращает утечки HANDLE при исключениях.

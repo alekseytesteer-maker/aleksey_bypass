@@ -1,92 +1,94 @@
-# SWILL Project - Advanced MTA Injection Framework
+# SWILL Project - Stable Windows Injection & Loading Library
 
-## Overview
-SWILL (Stealth Weapon for Injecting Libraries and Loading) is a comprehensive injection framework designed for Multi Theft Auto. It features advanced memory manipulation, signature scanning, and MinHook-based function interception to bypass anti-cheat protections.
+**Версия:** 1.0.0  
+**Платформа:** Windows x86 (Win32)  
+**Цель:** Multi Theft Auto (GTA San Andreas)
 
-## Components
+## Описание
 
-### 1. SWILL_Loader (Injector)
-- **SeDebugPrivilege** elevation for system-wide access
-- **DACL manipulation** to grant PROCESS_ALL_ACCESS
-- **Syscall stubbing** for stealthy memory operations
-- **Multiple injection methods**:
-  - LoadLibraryW via remote thread
-  - Reflective DLL injection (manual mapping)
-  - Cave hunting for safe memory allocation
-- **Process monitoring** with crash detection
+SWILL — это устойчивый инжектор DLL с сигнатурным сканированием и перехватом функций через MinHook. Проект предназначен для безопасного внедрения в процесс игры с обходом базовых защитных механизмов.
 
-### 2. SWILL_Payload (DLL)
-- **MinHook integration** for function interception
-- **AOB Pattern Scanner** for dynamic address resolution
-- **CIdArray::PopUniqueId hook** to prevent ID allocation crashes
-- **Crash trap neutralization** (NOP'd dangerous instructions)
-- **NetBitStream handler detection** for future packet interception
-
-## Architecture
+## Структура проекта
 
 ```
 SWILL_Project/
-├── SWILL_Loader/
-│   ├── Injector.hpp      # Core injection logic
-│   └── Main.cpp          # Entry point
-├── SWILL_Payload/
-│   ├── Memory.hpp        # AOB scanner & patch engine
-│   ├── Hooks.hpp         # MinHook wrapper
-│   ├── Core.cpp          # CIdArray hook implementation
-│   ├── dllmain.cpp       # DLL entry point
-│   └── MinHook/          # MinHook library files
-├── bin/                  # Compiled binaries
-└── docs/                 # Documentation
+├── 3rdparty/               # Внешние библиотеки
+│   └── MinHook/            # Библиотека для перехвата функций
+├── SWILL_Shared/           # Общие определения
+│   └── SharedDefs.hpp      # Константы, сигнатуры, структуры
+├── SWILL_Loader/           # Инжектор (EXE)
+│   ├── Injector.hpp        # Логгер и RAII гарды
+│   ├── Injector.cpp        # Реализация инжекта
+│   └── Main.cpp            # Точка входа
+├── SWILL_Payload/          # DLL с хуками
+│   ├── Memory.hpp/cpp      # Сканер сигнатур и патчинг
+│   ├── Hooks.hpp/cpp       # Обертка над MinHook
+│   ├── Core.cpp            # Логика хуков (CIdArray)
+│   └── dllmain.cpp         # DLL entry point
+├── bin/                    # Выходные файлы сборки
+└── docs/                   # Документация
 ```
 
-## Key Features
+## Ключевые функции
 
-### CIdArray Protection
-Based on decompiled analysis of `FUN_10241990`:
-- Monitors `DAT_105c8b5c` (IsInitialized flag)
-- Checks `DAT_105c8b7c` (ID stack count)
-- Generates virtual IDs when stack is empty
-- Prevents crash from `mov [0], 0` trap
+### Инжектор (SWILL_Loader)
+- **SeDebugPrivilege** — получение прав отладки
+- **RAII Handle Guards** — автоматическое управление дескрипторами
+- **LoadLibrary Injection** — классический метод внедрения
+- **Встроенный логгер** — потокобезопасное логирование
 
-### Signature Database
-All patterns from technical analysis:
-- `55 8B EC 83 EC ?? 53 56 57 A1...` - PopUniqueId
-- `55 8B EC 81 EC 0C 04 00 00 A1...` - NetBitStream handler
-- `C7 05 00 00 00 00 00 00 00 00` - Crash trap
+### Payload (SWILL_Payload)
+- **AOB Pattern Scanner** — поиск функций по сигнатурам с проверкой страниц памяти
+- **MinHook Integration** — безопасный перехват функций
+- **__fastcall/__thiscall** — корректное соглашение для x86
+- **SEH Protection** — защита от исключений доступа к памяти
+- **Atomic Variables** — потокобезопасные глобальные состояния
+- **Clean Shutdown** — восстановление оригинальных байтов при выгрузке
 
-## Build Instructions
+## Сборка
 
-1. **Download MinHook**: Place in `SWILL_Payload/MinHook/`
-2. **Open Solution**: `SWILL_Project.sln` in Visual Studio
-3. **Configure**: Release | Win32 platform
-4. **Build**: Build Solution (Ctrl+Shift+B)
-5. **Run**: Execute `SWILL_Loader.exe` as Administrator
+### Требования
+- Visual Studio 2019 или новее
+- Platform Toolset: v142 или новее
+- Windows SDK 10.0+
+- Библиотека MinHook (скачать отдельно)
 
-## Usage
+### Шаги
+1. Откройте `SWILL_Project.sln` в Visual Studio
+2. Скачайте MinHook с https://github.com/TsudaKageyu/minhook
+3. Поместите файлы MinHook в `3rdparty/MinHook/`
+4. Выберите конфигурацию **Release | Win32**
+5. Соберите решение (Ctrl+Shift+B)
+6. Готовые файлы появятся в папке `bin/`
 
-1. Start MTA San Andreas manually
-2. Run `SWILL_Loader.exe` as Administrator
-3. Wait for automatic injection (up to 60 seconds)
-4. Check `swill_injector.log` on Desktop for status
+## Использование
 
-## Technical Details
+1. Запустите GTA San Andreas с MTA
+2. Запустите `SWILL_Loader.exe`
+3. Инжектор автоматически найдет процесс и внедрит DLL
+4. Проверьте логи:
+   - `swill_injector.log` — лог инжектора
+   - `swill_payload.log` — лог DLL в процессе игры
 
-### Memory Map (CIdArray)
-- `0x105c8b58` - m_uiCapacity
-- `0x105c8b5c` - IsInitialized
-- `0x105c8b60` - m_uiPopIdCounter
-- `0x105c8b64` - m_uiTimeoutLimit (3600000ms)
-- `0x105c8b7c` - ID stack count
-- `0x105c8b80` - Array start pointer
-- `0x105c8b84` - Array end pointer
+## Технические детали
 
-### Hook Flow
-1. Wait for netc.dll module load
-2. Scan for PopUniqueId signature
-3. Extract CIdArray base from function prologue
-4. Install detour hook via MinHook
-5. Monitor stack count, generate virtual IDs if needed
-6. Neutralize crash traps with NOP patches
+### Перехват CIdArray::PopUniqueId
+Функция использует соглашение `__thiscall` (x86), которое эмулируется через `__fastcall`:
+- Первый аргумент (this) передается в ECX
+- Второй аргумент (edx) — фиктивный для выравнивания
+- Третий аргумент — параметр функции
 
-## Disclaimer
-This project is for educational purposes only. Use responsibly and only on servers where you have permission.
+### Защита от крашей
+- Проверка указателей на nullptr перед вызовом
+- SEH блоки (__try/__except) для чтения памяти
+- Атомарные переменные для многопоточного доступа
+- Виртуальные ID при пустом стеке
+
+## Лицензия
+
+Проект создан в образовательных целях. Используйте на свой страх и риск.
+
+## Контакты
+
+Документация: `docs/DOCUMENTATION.md`  
+Инструкция по сборке: `BUILD_INSTRUCTIONS.md`
