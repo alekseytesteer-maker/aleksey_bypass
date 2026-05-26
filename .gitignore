@@ -2,19 +2,21 @@
 # Compiled and build artifacts
 *.o
 *.obj
-*.exe
 *.dll
 *.so
 *.a
+*.exe
 *.out
 
 # Dependencies
+node_modules/
 venv/
 .venv/
 __pycache__/
 .mypy_cache/
 .pytest_cache/
-node_modules/
+dist/
+build/
 target/
 .gradle/
 
@@ -22,7 +24,6 @@ target/
 *.log
 *.tmp
 *.swp
-*.swo
 
 # Environment
 .env
@@ -33,7 +34,7 @@ target/
 .vscode/
 .idea/
 
-# Build directories
-build/
-dist/
+# System files
+.DS_Store
+Thumbs.db
 ```

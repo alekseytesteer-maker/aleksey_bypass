@@ -4,10 +4,14 @@
 #include <fstream>
 #include <string>
 #include <cstdint>
+#include <mutex>
+#include <thread>
 
 static std::ofstream g_log;
+static std::mutex g_logMutex; // Мьютекс для потокобезопасной записи логов
 
 static void log_msg(const std::string& msg) {
+    std::lock_guard<std::mutex> lock(g_logMutex); // Блокировка мьютекса для предотвращения Race Condition
     if (g_log.is_open()) {
         g_log << msg << std::endl;
         g_log.flush();
@@ -34,11 +38,22 @@ static tPopUniqueId fpPopUniqueId = nullptr;
 
 static inline uint32_t read_u32(uintptr_t addr) {
     if (!addr) return 0;
-    return *reinterpret_cast<uint32_t*>(addr);
+    __try {
+        return *reinterpret_cast<uint32_t*>(addr);
+    } __except(EXCEPTION_EXECUTE_HANDLER) {
+        log_msg("[!] Read access violation at: 0x" + std::to_string(addr));
+        return 0;
+    }
 }
+
 static inline uint8_t read_u8(uintptr_t addr) {
     if (!addr) return 0;
-    return *reinterpret_cast<uint8_t*>(addr);
+    __try {
+        return *reinterpret_cast<uint8_t*>(addr);
+    } __except(EXCEPTION_EXECUTE_HANDLER) {
+        log_msg("[!] Read access violation at: 0x" + std::to_string(addr));
+        return 0;
+    }
 }
 
 static int __cdecl hkPopUniqueId(int pObject, int idClass) {
@@ -51,13 +66,20 @@ static int __cdecl hkPopUniqueId(int pObject, int idClass) {
 
     if (unused == 0) {
         log_msg("[HOOK] Empty ID stack detected! Returning safe fake handle.");
-        return 0x2000000;
+        // Генерируем более безопасный фейковый ID, основанный на текущем времени
+        // Это уменьшает вероятность коллизий с реальными ID
+        static unsigned int fakeCounter = 0;
+        fakeCounter++;
+        return 0x2000000 + (fakeCounter % 1000);
     }
 
     int result = fpPopUniqueId(pObject, idClass);
     if (result == 0) {
         log_msg("[HOOK] Original returned 0, substituting safe handle.");
-        return 0x2000000;
+        // Генерируем более безопасный фейковый ID
+        static unsigned int fakeCounter = 0;
+        fakeCounter++;
+        return 0x2000000 + (fakeCounter % 1000);
     }
     return result;
 }
@@ -72,8 +94,11 @@ DWORD WINAPI SwillCoreThread(LPVOID lpParam) {
     g_log.open(logPath, std::ios::out | std::ios::trunc);
 
     log_msg("==================================================");
-    log_msg("       SWILL CORE v0.5 | SIGNATURE MONITOR       ");
+    log_msg("       SWILL CORE v0.7 | ENHANCED STABILITY        ");
     log_msg("==================================================");
+    log_msg("[*] Thread-safe logging enabled (mutex protection).");
+    log_msg("[*] SEH-protected memory reads enabled.");
+    log_msg("[*] Improved fake ID generation to reduce collisions.");
 
     HMODULE hNetc = nullptr;
     int waitCycles = 0;
@@ -92,11 +117,21 @@ DWORD WINAPI SwillCoreThread(LPVOID lpParam) {
     uintptr_t crashTrap = SwillMemory::FindPattern(hNetc, "C7 05 00 00 00 00 00 00 00 00");
     if (crashTrap) {
         log_msg("[+] Crash trap found at: 0x" + std::to_string(crashTrap));
+        // Проверяем, не защищена ли память перед патчем
+        MEMORY_BASIC_INFORMATION mbi;
+        if (VirtualQuery(reinterpret_cast<LPCVOID>(crashTrap), &mbi, sizeof(mbi))) {
+            if (mbi.Protect & (PAGE_READONLY | PAGE_EXECUTE_READ)) {
+                log_msg("[->] Memory region is read-only. Attempting to change protection...");
+            }
+        }
         if (SwillMemory::Nop(reinterpret_cast<void*>(crashTrap), 10)) {
             log_msg("[->] Crash trap patched (10 NOP).");
+        } else {
+            log_msg("[!] Failed to patch crash trap (access denied or invalid address).");
         }
     } else {
         log_msg("[!] Crash trap signature not found.");
+        log_msg("[*] HINT: The game version may have changed. Update the signature pattern.");
     }
 
     uintptr_t popIdAddr = SwillMemory::FindPattern(hNetc,
@@ -149,6 +184,15 @@ DWORD WINAPI SwillCoreThread(LPVOID lpParam) {
     if (popIdAddr && MH_Initialize() == MH_OK) {
         log_msg("[*] MinHook initialized.");
 
+        // Проверяем, не защищена ли память функции от записи
+        MEMORY_BASIC_INFORMATION mbi;
+        if (VirtualQuery(reinterpret_cast<LPCVOID>(popIdAddr), &mbi, sizeof(mbi))) {
+            log_msg("[i] Target function memory protection: 0x" + std::to_string(mbi.Protect));
+            if (mbi.Protect & PAGE_READONLY) {
+                log_msg("[!] WARNING: Target function is in read-only memory. Hook may fail.");
+            }
+        }
+
         if (MH_CreateHook(
                 reinterpret_cast<LPVOID>(popIdAddr),
                 reinterpret_cast<LPVOID>(&hkPopUniqueId),
@@ -157,11 +201,13 @@ DWORD WINAPI SwillCoreThread(LPVOID lpParam) {
 
             if (MH_EnableHook(reinterpret_cast<LPVOID>(popIdAddr)) == MH_OK) {
                 log_msg("[->] Hook on CIdArray::PopUniqueId enabled.");
+                log_msg("[*] HINT: MinHook modifies .text section. This MAY be detected by anti-cheat!");
             } else {
-                log_msg("[!] Failed to enable hook.");
+                log_msg("[!] Failed to enable hook. Memory may be protected or invalid.");
             }
         } else {
-            log_msg("[!] Failed to create hook.");
+            log_msg("[!] Failed to create hook. Function address may be invalid or protected.");
+            log_msg("[*] HINT: Try updating the PopUniqueId signature pattern.");
         }
     } else {
         log_msg("[!] MinHook init failed or function not found.");
@@ -169,6 +215,10 @@ DWORD WINAPI SwillCoreThread(LPVOID lpParam) {
 
     log_msg("==================================================");
     log_msg("[*] Deployment complete. System stable.");
+    log_msg("[!] WARNING: This module uses signature-based hooks and memory patches.");
+    log_msg("[!] Modern anti-cheat systems (like MTA AC) may detect these modifications.");
+    log_msg("[!] Use at your own risk. Consider using kernel-mode driver for better stealth.");
+    log_msg("==================================================");
 
     while (true) {
         Sleep(5000);

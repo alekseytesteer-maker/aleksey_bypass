@@ -19,8 +19,11 @@ int main() {
         std::cout << s << std::endl;
     };
 
-    writeLog("=== SWILL LOADER v0.6 | Enhanced Kernel Init ===");
+    writeLog("=== SWILL LOADER v0.7 | Enhanced Kernel Init ===");
     writeLog("[*] Log path: " + logPath);
+    writeLog("[!] DISCLAIMER: This tool is for educational purposes only.");
+    writeLog("[!] Using this software in online games may result in permanent bans.");
+    writeLog("[!] The authors are not responsible for any consequences.");
 
     // Проверяем, запущен ли процесс от имени администратора
     if (!SwillInjector::IsProcessElevated()) {
@@ -86,9 +89,16 @@ int main() {
             writeLog("[!] CRITICAL: All injection methods failed.");
             writeLog("[!] Possible reasons:");
             writeLog("    1. Target process has higher integrity level (run as Admin).");
-            writeLog("    2. Antivirus/EDR blocking injection.");
+            writeLog("    2. Antivirus/EDR blocking injection (try disabling temporarily).");
             writeLog("    3. Target process is a Protected Process (PPL).");
-            writeLog("    4. Game has anti-cheat protection.");
+            writeLog("    4. Game has anti-cheat protection (kernel-mode driver required).");
+            writeLog("    5. Handle stripping via ObRegisterCallbacks is active.");
+            writeLog("");
+            writeLog("[*] RECOMMENDATIONS FOR BYPASS:");
+            writeLog("    - Use a kernel-mode driver to bypass handle restrictions.");
+            writeLog("    - Implement manual DLL mapping to avoid LoadLibrary detection.");
+            writeLog("    - Use APC injection or thread hijacking for stealth.");
+            writeLog("    - Disable page protection changes detection (RWX regions).");
             writeLog("==================================================");
         }
     }
