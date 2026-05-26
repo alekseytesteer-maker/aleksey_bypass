@@ -117,7 +117,33 @@ DWORD WINAPI SwillCoreThread(LPVOID lpParam) {
     if (netPacketHandler) {
         log_msg("[+] NetBitStream handler found at: 0x" + std::to_string(netPacketHandler));
     } else {
-        log_msg("[!] NetBitStream handler signature not found.");
+        // Альтернативные сигнатуры для разных версий netc.dll
+        log_msg("[*] Trying alternative signatures for NetBitStream handler...");
+        
+        // Сигнатура 2: Вариант с другим прологом
+        netPacketHandler = SwillMemory::FindPattern(hNetc,
+            "55 8B EC 83 EC ?? 53 56 57 8B F1 8B 0D ?? ?? ?? ?? 8B 01");
+        if (netPacketHandler) {
+            log_msg("[+] NetBitStream handler (alt.1) found at: 0x" + std::to_string(netPacketHandler));
+        } else {
+            // Сигнатура 3: Более короткий паттерн
+            netPacketHandler = SwillMemory::FindPattern(hNetc,
+                "8B F1 8B 0D ?? ?? ?? ?? 8B 01 FF 50 ?? 8B F0");
+            if (netPacketHandler) {
+                log_msg("[+] NetBitStream handler (alt.2) found at: 0x" + std::to_string(netPacketHandler));
+            } else {
+                // Сигнатура 4: Поиск по характерной последовательности
+                netPacketHandler = SwillMemory::FindPattern(hNetc,
+                    "55 8B EC 6A FF 68 ?? ?? ?? ?? 64 A1 00 00 00 00 50 81 EC ?? 04 00 00");
+                if (netPacketHandler) {
+                    log_msg("[+] NetBitStream handler (alt.3) found at: 0x" + std::to_string(netPacketHandler));
+                } else {
+                    log_msg("[!] NetBitStream handler signature not found.");
+                    log_msg("[!] HINT: Update the signature pattern to match your netc.dll version.");
+                    log_msg("[!] You can find the correct signature using IDA Pro or Ghidra.");
+                }
+            }
+        }
     }
 
     if (popIdAddr && MH_Initialize() == MH_OK) {

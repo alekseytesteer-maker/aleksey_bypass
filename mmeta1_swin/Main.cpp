@@ -19,11 +19,31 @@ int main() {
         std::cout << s << std::endl;
     };
 
-    writeLog("=== SWILL LOADER v0.5 | Kernel Init ===");
+    writeLog("=== SWILL LOADER v0.6 | Enhanced Kernel Init ===");
     writeLog("[*] Log path: " + logPath);
 
+    // Проверяем, запущен ли процесс от имени администратора
+    if (!SwillInjector::IsProcessElevated()) {
+        writeLog("[!] WARNING: Loader is NOT running as Administrator.");
+        writeLog("[*] Many injection methods require elevated privileges.");
+        writeLog("[*] Attempting to restart with admin rights...");
+        
+        std::wstring wideExePath(exePathStr.begin(), exePathStr.end());
+        if (SwillInjector::RunAsAdmin(wideExePath)) {
+            writeLog("[->] Restart request sent. Exiting current instance.");
+            return 0;
+        } else {
+            writeLog("[!] Failed to request elevation. Continuing with limited rights (injection may fail).");
+            writeLog("[!] HINT: Right-click SwillLoader.exe and select 'Run as Administrator'.");
+        }
+    } else {
+        writeLog("[+] Running with Administrator privileges.");
+    }
+
     if (!SwillInjector::SetDebugPrivilege()) {
-        writeLog("[!] Warning: Failed to get SeDebugPrivilege.");
+        writeLog("[!] Warning: Failed to get SeDebugPrivilege (may require Admin rights).");
+    } else {
+        writeLog("[->] SeDebugPrivilege enabled.");
     }
 
     std::wstring targetProcess = L"gta_sa.exe";
@@ -52,14 +72,24 @@ int main() {
     writeLog("[+] Process found. PID: " + std::to_string(pid));
     writeLog("[*] Injecting: " + fullDllPath);
 
+    // Попытка 1: Классическая инъекция через LoadLibrary
     if (SwillInjector::InjectDLL(pid, fullDllPath, log)) {
         writeLog("[+++++] SWILL kernel deployed successfully via LoadLibrary!");
     } else {
         writeLog("[!] LoadLibrary injection failed. Trying SetWindowsHookEx...");
+        // Попытка 2: Инъекция через Windows Hook
         if (SwillInjector::InjectViaHook(pid, fullDllPath, log)) {
             writeLog("[+++++] SWILL kernel deployed successfully via Hook!");
         } else {
             writeLog("[!] Hook injection also failed.");
+            writeLog("==================================================");
+            writeLog("[!] CRITICAL: All injection methods failed.");
+            writeLog("[!] Possible reasons:");
+            writeLog("    1. Target process has higher integrity level (run as Admin).");
+            writeLog("    2. Antivirus/EDR blocking injection.");
+            writeLog("    3. Target process is a Protected Process (PPL).");
+            writeLog("    4. Game has anti-cheat protection.");
+            writeLog("==================================================");
         }
     }
 
