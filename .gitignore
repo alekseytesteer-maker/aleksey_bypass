@@ -1,11 +1,10 @@
 ```
 # Visual Studio/MSBuild
-*.vcxproj.user
 *.suo
 *.user
 *.userosscache
 *.sln.docstates
-ipch/
+*.vcxproj.filters
 *.VC.db
 *.VC.VC.opendb
 
@@ -17,5 +16,28 @@ ipch/
 x64/
 x86/
 build/
-dist/
+bld/
+[Bb]in/
+[Oo]bj/
+
+# Visual Studio Code
+.vscode/
+
+# Logs
+*.log
+
+# Environment
+.env
+.env.local
+*.env.*
+
+# Coverage
+coverage/
+*.coverage
+.htmlcov/
+
+# Temporary files
+*.tmp
+*.temp
+*~
 ```
