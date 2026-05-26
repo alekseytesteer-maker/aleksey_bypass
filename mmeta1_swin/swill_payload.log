@@ -1,0 +1,12 @@
+==================================================
+       SWILL CORE v0.5 | SIGNATURE MONITOR       
+==================================================
+[+] netc.dll captured. Base: 0x1872560128
+[+] Crash trap found at: 0x1872607871
+[->] Crash trap patched (10 NOP).
+[+] CIdArray::PopUniqueId found at: 0x1872590928
+[!] NetBitStream handler signature not found.
+[*] MinHook initialized.
+[->] Hook on CIdArray::PopUniqueId enabled.
+==================================================
+[*] Deployment complete. System stable.

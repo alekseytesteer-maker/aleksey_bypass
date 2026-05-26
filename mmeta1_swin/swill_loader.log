@@ -1,0 +1,16 @@
+=== SWILL LOADER v0.5 | Kernel Init ===
+[*] Log path: C:\Users\root\Desktop\mmeta1/swill_loader.log
+[*] Looking for gta_sa.exe...
+[*] DLL path: C:\Users\root\Desktop\mmeta1/SwillPayload.dll
+[+] Process found. PID: 16516
+[*] Injecting: C:\Users\root\Desktop\mmeta1/SwillPayload.dll
+[->] OpenProcess OK.
+[!] VirtualAllocEx failed. Error: 5. Trying NtAllocateVirtualMemory...
+[!] NtAllocateVirtualMemory failed. Status: 0x-1073741790
+[!] LoadLibrary injection failed. Trying SetWindowsHookEx...
+[->] Local LoadLibraryA OK.
+[->] Hook proc found.
+[->] SetWindowsHookEx set globally. Waiting for injection...
+[->] Unhooked. DLL presence in target: NO
+[!] Hook injection also failed.
+[+] Done.
