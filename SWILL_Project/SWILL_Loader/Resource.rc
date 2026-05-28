@@ -1,5 +1,0 @@
-#include <windows.h>
-
-// Ресурс для внедрения DLL в EXE
-// Формат: <имя> <тип> <файл>
-SWILL_PAYLOAD RCDATA "swill_payload.bin"

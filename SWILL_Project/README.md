@@ -1,94 +1,109 @@
-# SWILL Project - Stable Windows Injection & Loading Library
-
-**Версия:** 1.0.0  
-**Платформа:** Windows x86 (Win32)  
-**Цель:** Multi Theft Auto (GTA San Andreas)
+# SWILL Project - MTA:SA Anti-Cheat Bypass
 
 ## Описание
+SWILL (Stealthy Wrapper for Intercepting Lua Logic) — проект для обхода античита MTA:SA версии 1.6-unstable-0.
 
-SWILL — это устойчивый инжектор DLL с сигнатурным сканированием и перехватом функций через MinHook. Проект предназначен для безопасного внедрения в процесс игры с обходом базовых защитных механизмов.
+## Компоненты
 
-## Структура проекта
+### 1. SWILL_Core (Static Library)
+Базовая библиотека с общими функциями:
+- **HookEngine** — кастомный движок inline-хуков (замена MinHook)
+- **PatternScanner** — поиск байтовых сигнатур в памяти
+- **MemoryUtils** — утилиты для работы с памятью
+- **AntiTamper** — обход TamperGuard из netc.dll
 
-```
-SWILL_Project/
-├── 3rdparty/               # Внешние библиотеки
-│   └── MinHook/            # Библиотека для перехвата функций
-├── SWILL_Shared/           # Общие определения
-│   └── SharedDefs.hpp      # Константы, сигнатуры, структуры
-├── SWILL_Loader/           # Инжектор (EXE)
-│   ├── Injector.hpp        # Логгер и RAII гарды
-│   ├── Injector.cpp        # Реализация инжекта
-│   └── Main.cpp            # Точка входа
-├── SWILL_Payload/          # DLL с хуками
-│   ├── Memory.hpp/cpp      # Сканер сигнатур и патчинг
-│   ├── Hooks.hpp/cpp       # Обертка над MinHook
-│   ├── Core.cpp            # Логика хуков (CIdArray)
-│   └── dllmain.cpp         # DLL entry point
-├── bin/                    # Выходные файлы сборки
-└── docs/                   # Документация
-```
+### 2. SWILL_Payload (DLL)
+Основной модуль для инъекции в процесс игры:
+- **LuaIntegration** — интеграция с Lua VM MTA:SA
+- **NetworkHooks** — перехват сетевых функций (блокировка AC репортов)
+- **GuardBypass** — обход SEH Detour, Watchdog, WER очистка
 
-## Ключевые функции
-
-### Инжектор (SWILL_Loader)
-- **SeDebugPrivilege** — получение прав отладки
-- **RAII Handle Guards** — автоматическое управление дескрипторами
-- **LoadLibrary Injection** — классический метод внедрения
-- **Встроенный логгер** — потокобезопасное логирование
-
-### Payload (SWILL_Payload)
-- **AOB Pattern Scanner** — поиск функций по сигнатурам с проверкой страниц памяти
-- **MinHook Integration** — безопасный перехват функций
-- **__fastcall/__thiscall** — корректное соглашение для x86
-- **SEH Protection** — защита от исключений доступа к памяти
-- **Atomic Variables** — потокобезопасные глобальные состояния
-- **Clean Shutdown** — восстановление оригинальных байтов при выгрузке
+### 3. SWILL_Loader (EXE)
+Внешний инжектор для загрузки DLL:
+- Инъекция в запущенный процесс gta_sa.exe
+- Запуск GTA с автоматической инъекцией
 
 ## Сборка
 
 ### Требования
-- Visual Studio 2019 или новее
-- Platform Toolset: v142 или новее
-- Windows SDK 10.0+
-- Библиотека MinHook (скачать отдельно)
+- Visual Studio 2015 или новее (для совместимости с MTA)
+- CMake 3.15+
+- Windows SDK
 
-### Шаги
-1. Откройте `SWILL_Project.sln` в Visual Studio
-2. Скачайте MinHook с https://github.com/TsudaKageyu/minhook
-3. Поместите файлы MinHook в `3rdparty/MinHook/`
-4. Выберите конфигурацию **Release | Win32**
-5. Соберите решение (Ctrl+Shift+B)
-6. Готовые файлы появятся в папке `bin/`
+### Компиляция
+```bash
+mkdir build
+cd build
+cmake .. -G "Visual Studio 14 2015"
+cmake --build . --config Release
+```
 
 ## Использование
 
-1. Запустите GTA San Andreas с MTA
-2. Запустите `SWILL_Loader.exe`
-3. Инжектор автоматически найдет процесс и внедрит DLL
-4. Проверьте логи:
-   - `swill_injector.log` — лог инжектора
-   - `swill_payload.log` — лог DLL в процессе игры
+### Режим 1: Инъекция в запущенный процесс
+```bash
+SWILL_Loader.exe --inject
+```
 
-## Технические детали
+### Режим 2: Запуск GTA с инъекцией
+```bash
+SWILL_Loader.exe --launch -p "C:\Path\To\gta_sa.exe"
+```
 
-### Перехват CIdArray::PopUniqueId
-Функция использует соглашение `__thiscall` (x86), которое эмулируется через `__fastcall`:
-- Первый аргумент (this) передается в ECX
-- Второй аргумент (edx) — фиктивный для выравнивания
-- Третий аргумент — параметр функции
+### Режим 3: Ручная загрузка
+Загрузите `SWILL.dll` через любой инжектор (Manual Map, LoadLibrary, и т.д.)
 
-### Защита от крашей
-- Проверка указателей на nullptr перед вызовом
-- SEH блоки (__try/__except) для чтения памяти
-- Атомарные переменные для многопоточного доступа
-- Виртуальные ID при пустом стеке
+## Обход защиты
+
+### TamperGuard (netc.dll)
+- Отключение флага `g_tamper_lock`
+- Патч INT 0x29 (__fastfail) инструкций
+- Обход XOR guard-функций
+
+### Loader.dll проверки
+- Очистка WER дампов перед запуском
+- Сброс реестровых флагов (uncleanstop, lastruncrash)
+- Переменная среды `MTA_DISABLE_SEH_DETOUR`
+
+### Сетевые хуки
+- Блокировка пакета ID 91 (TRANSGRESSION)
+- Фильтрация AC_Logger вызовов (ID: 9734, 9736, 8250, 8648, 7060, 7744, 7745)
+- Эмуляция успешных AC_Pulsator проверок
+
+## Структура проекта
+```
+SWILL_Project/
+├── CMakeLists.txt
+├── README.md
+├── include/
+│   ├── shared/
+│   │   └── SharedDefs.hpp
+│   ├── core/
+│   │   ├── HookEngine.hpp
+│   │   ├── PatternScanner.hpp
+│   │   ├── MemoryUtils.hpp
+│   │   └── AntiTamper.hpp
+│   ├── payload/
+│   │   ├── LuaIntegration.hpp
+│   │   ├── NetworkHooks.hpp
+│   │   └── GuardBypass.hpp
+│   └── loader/
+│       └── Injector.hpp
+└── src/
+    ├── core/
+    │   └── HookEngine.cpp
+    ├── payload/
+    │   ├── dllmain.cpp
+    │   ├── LuaIntegration.cpp
+    │   ├── NetworkHooks.cpp
+    │   └── GuardBypass.cpp
+    └── loader/
+        ├── main.cpp
+        └── Injector.cpp
+```
+
+## Предупреждение
+Использование данного ПО может нарушать условия обслуживания MTA:SA и серверов. Используйте на свой страх и риск только в образовательных целях.
 
 ## Лицензия
-
-Проект создан в образовательных целях. Используйте на свой страх и риск.
-
-## Контакты
-
-Документация: `docs/DOCUMENTATION.md`  
-Инструкция по сборке: `BUILD_INSTRUCTIONS.md`
+MIT License

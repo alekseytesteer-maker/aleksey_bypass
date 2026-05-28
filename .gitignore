@@ -1,27 +1,39 @@
 ```
-# Visual Studio/MSBuild
-*.suo
+# Build artifacts
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.a
+*.lib
+*.pdb
+*.ilk
+*.exp
+*.imp
+
+# CMake build directories
+build/
+cmake-build-*/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Visual Studio files
+*.vcxproj*
+*.sln
+*.sdf
+*.opensdf
 *.user
 *.userosscache
-*.sln.docstates
-*.vcxproj.filters
+*.suo
+ipch/
 *.VC.db
 *.VC.VC.opendb
 
-# Build results
-[Dd]ebug/
-[Dd]ebugPublic/
-[Rr]elease/
-[Rr]eleases/
-x64/
-x86/
-build/
-bld/
-[Bb]in/
-[Oo]bj/
-
-# Visual Studio Code
-.vscode/
+# Dependencies
+3rdparty/
 
 # Logs
 *.log
@@ -31,13 +43,7 @@ bld/
 .env.local
 *.env.*
 
-# Coverage
-coverage/
-*.coverage
-.htmlcov/
-
-# Temporary files
-*.tmp
-*.temp
-*~
+# OS generated files
+.DS_Store
+Thumbs.db
 ```
